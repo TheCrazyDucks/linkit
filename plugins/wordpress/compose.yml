@@ -1,0 +1,29 @@
+services:
+  db:
+    image: mysql:latest
+    container_name: mysql
+    volumes:
+      - ./database/data:/var/lib/mysql
+      - ./database/initdb.d:/docker-entrypoint-initdb.d
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: password123 # any random string will do
+      MYSQL_DATABASE: udb_test # the name of your mysql database
+      MYSQL_USER: me_prname # the name of the database user
+      MYSQL_PASSWORD: password123 # the password of the mysql user
+
+  example:
+    depends_on:
+      - db
+    image: wordpress:latest # we're using the image with php7.1
+    container_name: wordpress
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: me_prname
+      WORDPRESS_DB_PASSWORD: password123
+      WORDPRESS_DB_NAME: udb_test
+    ports:
+      - "1234:80"
+    restart: always
+    volumes:
+      - ./src:/var/www/html

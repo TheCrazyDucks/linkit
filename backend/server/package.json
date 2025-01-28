@@ -1,0 +1,30 @@
+{
+  "name": "linkit",
+  "version": "1.0.0",
+  "main": "analyze.js",
+  "scripts": {
+    "start": "bun linkit.ts",
+    "dev": "bun --hot linkit.ts",
+    "teach": "node teach.js --env-file=.env",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "type": "module",
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.716.0",
+    "@aws-sdk/lib-dynamodb": "^3.723.0",
+    "aws-sdk": "^2.1692.0",
+    "body-parser": "^1.20.3",
+    "chromadb": "^1.9.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.5.0",
+    "express-slow-down": "^2.0.3",
+    "openai": "^4.67.3",
+    "ws": "^8.18.0"
+  }
+}

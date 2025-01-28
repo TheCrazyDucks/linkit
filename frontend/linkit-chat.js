@@ -1,4 +1,6 @@
-window.addEventListener("load", () => {
+const isNil = (obj) => obj === null || obj === undefined;
+
+const linkit = () => {
     console.log("linkit version: 0.0.2")
     let isOpened = false
     let chatTimer = null
@@ -13,15 +15,40 @@ window.addEventListener("load", () => {
     let lastData = ""
     let isFocused = false
     let token = null
+    let settings;
     const uri = "service.thecrazyducks.com"
+    // const uri = "localhost:8090"
+    /**
+     * @type {import("./linkit.d.ts").LinkitConfig}
+     */
+    const defaultSettings = {
+        name: "LinkiT",
+        message: "Welcome to LinkiT's AI tutor, we are here to help you explore this website. Ask anything that's on your mind, and we'll try to provide you with a feedback!",
+        suggestions: [
+            "What can you do?",
+            "Can you do my homework?",
+            "What is this site?"
+        ],
+        update_date: Date.now()
+    }
 
-    const createChatView = () => {
+    const formatDate = (_date) => {
+        let date = new Date(_date);
+        return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    }
+
+    console.log(formatDate(Date.now()));
+
+    const isValidString = (obj) => isString(obj) && /^[a-zA-Z0-9\- ]+$/.test(obj);
+
+    const createChatView = (chatName) => {
+        let _chatName = isValidString(chatName) ? chatName : "Linkit";
         const chat = document.createElement("div")
         chat.className = "linkit-container";
         chat.innerHTML = `
     <div class="linkit-chat">
         <div class="linkit-header" style=" vertical-align: middle;">
-            <span style="opacity: 0.9;">Sar-EL</span>
+            <span style="opacity: 0.9;" class="linkit-name">${_chatName}</span>
             <span
                 style="font-style: italic; font-weight: 600; font-size: 0.9m; background: #0000004f; padding: 0.25em 0.5em; margin-left: 0.5em; border-radius: 0.5em; font-size: 0.85em;">A.I
                 Tutor
@@ -123,7 +150,8 @@ window.addEventListener("load", () => {
                 style="padding: 0.2em 0.5em; background: #0000004f; font-size: 0.85em; margin-left: 0.3em; font-style: normal;">Free</span>
         </div>
         <div>
-            Sar-EL A.I Tutor
+            <span class="linkit-name">${_chatName}</span>&nbsp; 
+            <span>A.I Tutor</span>
             <span id="linkit-toggle-title">Open</span>
         </div>
     </div>
@@ -132,9 +160,24 @@ window.addEventListener("load", () => {
         // window.dispatchEvent(new CustomEvent("supply-key-linkit", {key: "a"}))
     }
 
-    const initChat = () => {
-        let view = createChatView()
-        console.log("hmm")
+    const isArray = (obj) => Array.isArray(obj);
+
+    /**
+     * @param {import("./linkit.d.ts").LinkitConfig} config
+     */
+    const initChat = (config) => {
+        settings = defaultSettings;
+        if (config && typeof config === 'object') {
+            for (key in settings) {
+                if (config[key]) {
+                    settings[key] = config[key]
+                }
+            }
+        }
+
+        let view = createChatView(settings.name)
+
+        // console.log("hmm")
         document.body.appendChild(view)
         // displayComingSoon()
         document.querySelector(".linkit-toggle").onclick = () => {
@@ -147,14 +190,17 @@ window.addEventListener("load", () => {
         displayConnection(false)
         clearContent()
         document.querySelector(".linkit-content").innerHTML += `<div class="linkit-update-ind">Info last updated on 8th Oct 2024</div>`
-        addSuggestionsView(document.querySelector(".linkit-content"), ["Jerusalem then & now", "The holy country", "Flight issues arise due to war"])
+        addSuggestionsView(document.querySelector(".linkit-content"), settings.suggestions)
         initScrollDownButton()
         // displayMailBox()
         document.querySelector(".linkit-submit").onclick = () => shouldSendMessage(document.querySelector("#linkit-chat-input"));
         // displayLoadingAnimation(true)
     }
 
-    const displayMailBox = ()=>{
+    const setDisplayName = () => {
+    }
+
+    const displayMailBox = () => {
         let div = document.createElement("div")
         div.className = 'linkit-mail-form'
         div.innerHTML = `
@@ -181,38 +227,6 @@ window.addEventListener("load", () => {
         document.querySelector(".linkit-content").appendChild(div)
     }
 
-//     const displayComingSoon = () => {
-//         document.querySelector(".linkit-content").innerHTML = `
-//         <div class="linkit-soon">
-//         <div style="">
-//         Comming Very Soon! 
-// <svg viewBox="0 0 100 100">
-//                     <path d="
-//                              M34,2 q0,20 20,20 q-20,0 -20,20 q0,-20 -20,-20 q20,0 20,-20 
-//                              M65,8 q0,38 38,38 q-38,0 -38,38 q0,-38 -38,-38 q38,0 38,-38 
-//                              M20,42 q0,29 29,29 q-29,0 -29,29 q0,-29 -29,-29 q29,0 29,-29 
-//                     " fill="var(--linkit-primary)"></path>
-//                 </svg>
-//         </div>
-//         <div style="font-style: italic">
-//         Want us to notify you?
-//         </div>
-//         <div style="font-style: italic">
-//         Fill the form & be one of the firsts!
-//         </div>
-//         <div class="linkit-soon-form">
-//             <div>Name</div>
-//             <input id="" placeholder="your name"/>
-//             <div>Email</div>
-//             <input id="" placeholder="example@site.com"/>
-//         </div>
-//             <div class="linkit-soon-submit">Let Me Know!</div>
-//             </div>
-        
-//        `
-
-//     }
-
     const resetChatState = (receiving) => {
         resRef = null
         stack = []
@@ -231,6 +245,8 @@ window.addEventListener("load", () => {
         chunkIsComplete = false
     }
 
+    let retryTimer = null
+
     const scrollToBottom = () => {
         let assistantContent = document.querySelector(".linkit-content")
         assistantContent.scrollTo({
@@ -248,25 +264,33 @@ window.addEventListener("load", () => {
 
     const connectWebSocket = () => {
         if (!token) {
-            console.log("hmm")
+            // console.log("hmm")
             return
         }
         console.log("connecting")
+        // websocket = new WebSocket("wss://" + uri)
+        //TODO: revert to secure
         websocket = new WebSocket("wss://" + uri)
 
-        setInterval(()=>{
-            websocket.dispatchEvent(new CustomEvent('message', {detail: {data: JSON.stringify({'reason': 'pong'})}}))
-        }, 30000)
+        setInterval(() => {
+            try {
+                websocket.dispatchEvent(new CustomEvent('message', { detail: { data: JSON.stringify({ 'reason': 'pong' }) } }))
+            } catch { }
+        }, 29000)
 
         websocket.onerror = (e) => {
             console.log("Couldn't connect retrying in: " + (lastDelay / 1000) + "s")
             isConnected = false
             displayConnection(false)
             resetChatState()
+            if (retryTimer) {
+                clearTimeout(retryTimer)
+                retryTimer = null
+            }
 
             //TODO: show error
             // showError("Disconnected", true)
-            setTimeout(() => {
+            retryTimer = setTimeout(() => {
                 lastDelay += 1000
                 connectWebSocket()
             }, lastDelay)
@@ -275,7 +299,7 @@ window.addEventListener("load", () => {
         let authed = false
 
         websocket.onmessage = (e) => {
-            if(e.detail){
+            if (e.detail) {
                 console.log('::pong')
                 return;
             }
@@ -300,8 +324,9 @@ window.addEventListener("load", () => {
 
         let reference = undefined
 
-        websocket.onclose = ()=>{
-            if(authed){
+        websocket.onclose = () => {
+            console.log("dude what...")
+            if (authed) {
                 connectWebSocket()
             }
             displayConnection(false)
@@ -310,6 +335,10 @@ window.addEventListener("load", () => {
         websocket.onopen = () => {
             //TODO: showError
             // showError("", false)
+            if (retryTimer) {
+                clearTimeout(retryTimer)
+                retryTimer = null
+            }
             isConnected = true
             lastDelay = 1000;
             displayConnection(true)
@@ -333,7 +362,7 @@ window.addEventListener("load", () => {
 
         if (shouldOpen) {
             // chat.style.display = 'none'
-            console.log("opening")
+            // console.log("opening")
             chat.style.transform = 'scale(0)'
             chat.style.display = 'flex'
             document.querySelector(".linkit-banner").style.opacity = 0
@@ -356,12 +385,33 @@ window.addEventListener("load", () => {
         return _timer
     }
 
+    /**
+     * @deprecated
+     */
     window.addEventListener("init-linkit", () => {
         initChat()
     })
 
+    window.addEventListener("supply-message-linkit", (e) => {
+        if (!e.detail) {
+            //TODO: display default...
+            return;
+        }
+        if (typeof e.detail.message === 'string') {
+            //TODO: Validate custom message
+            let message = e.detail.message
+            //TODO: display custom message
+        }
+        if (Array.isArray(e.detail.suggestions)) {
+            /** @type {Array<string>} */
+            let suggestions = e.detail.suggestions
+            //TODO: display each 
+            let validSuggestions = suggestions.filter((value) => typeof value === 'string' && value.trim() !== "")
+        }
+    })
+
     window.addEventListener("connect-linkit", (e) => {
-        console.log(e.detail.token)
+        // console.log(e.detail.token)
         if (e.detail && typeof e.detail.token === 'string') {
             token = e.detail.token
         } else {
@@ -466,7 +516,7 @@ window.addEventListener("load", () => {
         //Cannot send messages while receiving
         //TODO: undo
         // isReceiving = false
-        console.log("rec: "+isReceiving + ", con: "+isConnected)
+        // console.log("rec: "+isReceiving + ", con: "+isConnected)
         if (!isConnected || isReceiving) {
             return;
         }
@@ -507,7 +557,7 @@ window.addEventListener("load", () => {
         if (!show) {
             return;
         }
-        console.log("LOOOOL!")
+        // console.log("LOOOOL!")
         let div = document.createElement("div")
         div.id = "linkit-loading-ind"
         div.className = "linkit-loading-ind"
@@ -571,7 +621,7 @@ window.addEventListener("load", () => {
         div.innerHTML = `
                     <div class="linkit-msg-date" style="">
                         <span>
-                            Sar-EL A.I. • at ${formattedHour()}
+                            ${(isValidString(settings.name) ? settings.name : "Linkit") + " "} A.I. • at ${formattedHour()}
                         </span>
                     </div>
                     <div>
@@ -604,8 +654,12 @@ window.addEventListener("load", () => {
     const createSuggestionsView = (options) => {
         let div = document.createElement("div")
         div.className = "linkit-suggestions"
-        div.innerHTML = `Welcome to Sar-EL A.I Tutor!<br> <span style='font-style: italic; font-weight: 500'>confused?</span> here are some trending topics:`
-        for (let option of options) {
+
+        div.innerText = settings.message //innerHTML = `Welcome to Sar-EL A.I Tutor!<br> <span style='font-style: italic; font-weight: 500'>confused?</span> here are some trending topics:`
+        if(!Array.isArray(options)){
+            return;
+        }
+        for (let option of options.slice(0, 3)) {
             if (isString(option)) {
                 let item = document.createElement("div")
                 item.innerText = option
@@ -621,7 +675,7 @@ window.addEventListener("load", () => {
                 //  M70,90 L52.5,65 L70,40 L87.5,65 Z
                 item.className = "linkit-suggested-link"
                 item.onclick = () => {
-                    if(!isConnected){
+                    if (!isConnected) {
                         return;
                     }
                     shouldSendMessage(item.innerText)
@@ -638,56 +692,6 @@ window.addEventListener("load", () => {
         return div
     }
 
-
-    let chunks = [
-        '🚀 Welcome  to the Ultimate Complex List! 🚀\nPrepare for a wild mix of elements designed to challenge your formatter:\n\n1. Item One: **The Beginning**\n   - Subitem \n    1. lol\n\n   ```json\n   {\n       \"description\": \"This subitem introduces the main topic.\",\n       \"priority\": \"high\"\n   }\n   ```\n\n   - Point **A:** \"Crucial Info\"\n\n   ```json\n   {\n       \"key\": \"A\",\n       \"value\": \"Important information.\"\n   }\n   ```\n\n   - Point **B:** \"Additional Insights\"\n       - Insight **1:** True\n\n       ```json\n       {\n           \"insight\": 1,\n           \"status\": \"verified\"\n       }\n       ```\n\n       - Insight **2:** False\n\n   - Subitem **1.2**\n       - Metric **X:** 100%\n\n       ```json\n       {\n           \"metric\": \"X\",\n           \"percentage\": 100\n       }\n       ```\n\n       - Metric **Y:** 75%\n       - Status: **Active**\n\n       ```json\n       {\n           \"status\": \"active\",\n           \"timestamp\": \"2024-10-07T12:00:00Z\"\n       }\n       ```\n\n2. Item Two: **A New Perspective**\n   - Subitem **2.1:** A brief overview\n\n   ```json\n   {\n       \"overview\": \"This section provides insights into new perspectives.\",\n       \"importance\": \"medium\"\n   }\n   ```\n\n   - Subitem **2.2**\n       - Note **A:** \"Keep this in mind\"\n\n       ```json\n       {\n           \"note\": \"A\",\n           \"reminder\": \"Important considerations.\"\n       }\n       ```\n\n      - Note **B:** \"Consider alternatives\"',
-        "1. lol ",
-        "1. ",
-        "it ",
-        "works ",
-        "- lmao",
-        "\n\n",
-        "idk what",
-        "1. lol\n2. is this whh",
-        "\n",
-        "   - lol!\n",
-        "   - ",
-        " ok",
-        "       1. hmmm",
-        "       1. hmmm",
-        "       - hmmm",
-        "1. ",
-        "sigmaballs",
-        "\n",
-        "1. ",
-        "JSON:\n",
-        "```json",
-        "{\n",
-        "\"some\":\"damm\"",
-        "}\n",
-        "\n```\nsomething\n",
-        "2. cool",
-        "\n\n\n",
-        "ok",
-        " a",
-        " lot",
-        " of",
-        " text",
-        "2. ",
-        "lol",
-        "hmm\n",
-        "1. ",
-        "namm\n\n",
-        "ok",
-        "- wtf",
-        "   - thats \n```json\n{\"seh\":3}```",
-        "   1. thats \n```json\n{\"seh\":3}```",
-        "   1. thats \n```json\n{\"seh\":3}```",
-        "   - thats \n```json\n{\"seh\":3}```",
-        "   5. thats \n```json\n{\"seh\":3}```",
-        "   5. thats \n```json\n{\"seh\":3}```\n\n",
-        "cool",
-    ]
 
     const testData = () => {
         let chunkId = 0
@@ -777,7 +781,7 @@ window.addEventListener("load", () => {
 
     const processV4 = (chunk) => {
         let _data = JSON.parse(chunk)
-        console.log(chunk)
+        // console.log(chunk)
 
         if (_data["reason"] === "connected") {
             window.dispatchEvent(new Event("finished-linkit"))
@@ -799,7 +803,7 @@ window.addEventListener("load", () => {
 
         for (let i = 0; i < lines.length; i++) {
             let line = lines[i]
-            console.log("%c" + line, "color: green")
+            // console.log("%c" + line, "color: green")
 
             if (isInMarkdown) {
                 let index = line.indexOf('```')
@@ -828,7 +832,7 @@ window.addEventListener("load", () => {
                         break;
                     }
                     if (lastEnded && line === "") {
-                        console.log("%clast: " + lastEnded + "::" + chunk + "\nprevious:" + previous, "color: purple")
+                        // console.log("%clast: " + lastEnded + "::" + chunk + "\nprevious:" + previous, "color: purple")
                         levels = []
                     }
 
@@ -854,9 +858,9 @@ window.addEventListener("load", () => {
                 // reference.lastElementChild.innerHTML += _data["context"]
                 /**@type {Array<any>} */
                 let data = _data["context"][0]
-                console.log("CONTEXT")
-                console.log(data)
-                console.log(JSON.stringify(data))
+                // console.log("CONTEXT")
+                // console.log(data)
+                // console.log(JSON.stringify(data))
                 let pages = [], images = []
                 let filtered = data.filter((value, index) => {
                     return index === data.findIndex((item) => item.page === value.page)
@@ -901,7 +905,7 @@ window.addEventListener("load", () => {
 
     const handleListType = (data) => {
         let { level, type, symbol, content } = data;
-        console.log("level: " + level + ", len: " + levels.length)
+        // console.log("level: " + level + ", len: " + levels.length)
         //Above level
         if (level > levels.length) {
             levels.push({
@@ -913,11 +917,11 @@ window.addEventListener("load", () => {
             })
         }
         else if (level === levels.length) { //Same level
-            console.log("same level")
+            // console.log("same level")
             if (levels[level - 1].lists[levels[level - 1].focus].type !== type) {
                 //switch <->
-                console.log("NOT SAME TYPE")
-                console.log("last: " + levels[level - 1].type + ", c:" + type + "::" + symbol)
+                // console.log("NOT SAME TYPE")
+                // console.log("last: " + levels[level - 1].type + ", c:" + type + "::" + symbol)
                 let currentFocus = levels[level - 1].focus
                 if (currentFocus === 1) { //currentFocus == true
                     levels[level - 1].lists[1] = null
@@ -956,7 +960,7 @@ window.addEventListener("load", () => {
         const newItem = createListItem(content)
 
         if (!currentList) {
-            console.log(`${level}%2=${level % 2}`)
+            // console.log(`${level}%2=${level % 2}`)
             const newList = createListContainer(type, symbol, (level % 2 === 0))
             currentLevel.lists[focused] = {
                 level,
@@ -966,7 +970,7 @@ window.addEventListener("load", () => {
             }
             newList.appendChild(newItem)
             // reference = newItem
-            console.log("NEW LIST::" + type)
+            // console.log("NEW LIST::" + type)
             if (focused === 1) {
                 currentLevel.lists[0].ref.appendChild(newList)
             } else {
@@ -981,7 +985,7 @@ window.addEventListener("load", () => {
             }
         } else {
             // currentList.type 
-            console.log("CURRENT: " + currentList.type)
+            // console.log("CURRENT: " + currentList.type)
             if (currentList.ref) {
                 currentList.ref.innerHTML = currentList.ref.innerHTML.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
             }
@@ -991,7 +995,7 @@ window.addEventListener("load", () => {
     }
 
     const createListContainer = (type, symbol, isEven) => {
-        console.log("isEven: " + isEven)
+        // console.log("isEven: " + isEven)
         let list
         if (type === "number") {
             list = document.createElement("ol")
@@ -1000,7 +1004,7 @@ window.addEventListener("load", () => {
             list = document.createElement("ul")
         }
         list.className = "linkit-list " + (isEven ? "even" : "odd")
-        console.log(list)
+        // console.log(list)
         return list
     }
 
@@ -1069,6 +1073,7 @@ window.addEventListener("load", () => {
                     <img />
                     ${i === 2 && images.length > 3 ? `<div class="linkit-img-grid-count">${images.length}+</div>` : ""}
                 `
+                //TODO: make it host + href
                 div.querySelector("img").src = "https://images.prismic.io/" + images[i]
                 container.appendChild(div)
             }
@@ -1077,4 +1082,42 @@ window.addEventListener("load", () => {
     }
 
     window.dispatchEvent(new Event("linkit-ready"))
+    return {
+        connect: (_token) => {
+            if (!_token || typeof _token !== 'string') {
+                console.log("token type mismatch", "color: red")
+                displayConnection(false)
+                return;
+            }
+            token = _token
+            connectWebSocket()
+        },
+        init: (config) => {
+            initChat(config)
+        }
+    }
+}
+
+/**
+ * @param {string} token
+ * @param {import("./linkit.d.ts").LinkitConfig} config
+ */
+window.connectLinkit = (token, config) => {
+    let { connect, init } = linkit()
+    init(config)
+    if (!token || typeof token !== 'string') {
+        console.log("token type mismatch", "color: red")
+        return;
+    }
+    connect(token)
+}
+
+window.addEventListener("linkit-init", (e) => {
+    let { connect, init } = linkit()
+    init()
+    if (!e.detail || !e.detail.token) {
+        console.log("no token provided")
+        return;
+    }
+    connect(e.detail.token)
 })

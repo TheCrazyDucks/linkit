@@ -1,4 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Fredoka:wght@300..700&display=swap');
+html, body{
+  margin: 0;
+}
 
 :root {
     /* --linkit-primary: #4b3404; */
@@ -140,6 +143,7 @@ body {
     position: fixed;
     bottom: 1em;
     right: 1em;
+    font-size: 1rem;
     width: fit-content;
     font-family: "Be Vietnam Pro";
     z-index: 1101;
@@ -440,6 +444,7 @@ body {
     border: none;
     min-height: unset;
     height: unset;
+    /* font-weight: 600; */
     font-size: 0.95em;
     /* width: 100%;; */
     flex: 1;
@@ -738,6 +743,8 @@ ul.linkit-list>li::before {
 }
 
 .linkit-notice {
+    color: var(--linkit-primary);
+    font-weight: 500;
     font-size: 1em;
     text-align: center;
     /* padding: 2em 0; */
@@ -1185,4 +1192,4 @@ div.linkit-img-grid.double>div:nth-child(2) {
 .linkit-mail-submit:hover{
     /* background: var(--linkit-sec); */
     /* color: var(--linkit-bg); */
-}
+} 

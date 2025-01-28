@@ -1,0 +1,32 @@
+# version: "3"
+services:
+  app:
+    # image: 'thecrazyducks/linkit:latest'
+    build: .
+    # depends_on: 
+    #   chroma:
+    #     condition: "service_started"
+    #     restart: true
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /usr/app/
+    environment:
+      pharse: ${PHARSE}
+      TOKEN_SECRET: ${TOKEN_SECRET}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CHROMA_HOST: ${CHROMA_HOST} 
+      SAR_EL_KEY: ${SAR_EL_KEY}
+    ports:
+      - "8090:8080"
+    volumes:
+      - ./:/usr/app/
+  chroma:
+    image: 'chromadb/chroma:latest'
+    volumes: 
+        - ./chroma/backup:/chroma/chroma
+    ports: 
+      - "8000:8000"
+    # ports:
+    #   - "8000:8000"

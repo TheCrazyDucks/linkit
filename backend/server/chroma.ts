@@ -1,21 +1,19 @@
-import { ChromaClient, OpenAIEmbeddingFunction } from "chromadb";
+import { AddRecordsParams, ChromaClient, OpenAIEmbeddingFunction} from "chromadb";
+import type { IncludeEnum } from "chromadb";
 import { config } from "dotenv"
 config()
 
-// import a from "chr"
-/** @type {ChromaClient} */
-let client;
+let client: ChromaClient;
 const embeddingFunction = new OpenAIEmbeddingFunction({
     openai_api_key: process.env.OPENAI_API_KEY,
     openai_model: 'text-embedding-3-small'
 })
 
-
 let attempts = 0
 
 let collectionsCache = {}
 
-const connect = async (host) => {
+const connect = async (host?: string | undefined) => {
     client = new ChromaClient({
         path: "http://" + (host ? host : process.env.CHROMA_HOST) + ":8000"
     })
@@ -24,13 +22,6 @@ const connect = async (host) => {
     try {
         console.log(await client.heartbeat())
         console.log("chroma::connected")
-        //TODO: remove
-        // try{
-        //     console.log(JSON.stringify((await (await client.getCollection({name: "sar_el_tours", embeddingFunction})).peek({limit: 1}))))
-        // }catch(e){
-        //     console.error(e)
-        //     console.log("empty")
-        // }
     } catch {
         console.log("Failed to connect chroma::" + attempts)
         attempts++
@@ -39,7 +30,7 @@ const connect = async (host) => {
             return;
         }
         setTimeout(() => {
-            connect()
+            connect(host)
         }, attempts * 1000)
     }
 }
@@ -52,7 +43,7 @@ const createCollection = ({ name, description }) => {
     try {
         client.createCollection({
             name,
-            description
+            metadata: {description}
         })
     } catch { }
 }
@@ -70,7 +61,7 @@ const get = async ({collectionName, id})=>{
 
 const getAll = async ({collectionName})=>{
     let collection = await client.getCollection({name: collectionName, embeddingFunction})
-    return await collection.get({where: {page: {"$ne": ""}}, limit: Infinity, include: ["metadatas"]})
+    return await collection.get({where: {page: {"$ne": ""}}, limit: Infinity, include: ["metadatas" as IncludeEnum.Metadatas]})
 }
 
 const add = async ({collectionName, id, document, metadata}) =>{
@@ -86,17 +77,28 @@ const add = async ({collectionName, id, document, metadata}) =>{
     }
 }
 
-const addMany = async({collectionName, documents})=>{
+type document = {
+    document: string,
+    metadata: Record<string, string>
+}
+
+type addManyParams = {
+    collectionName: string,
+    documents: Array<document>
+}
+
+const addMany = async({collectionName, documents}: addManyParams)=>{
     // let _ids = []
-    let _documents = []
-    let _metadatas = []
+    let _documents: Array<string> = []
+    let _metadatas: Array<Record<string, string>>= []
     documents.forEach((value, index)=>{
         // _ids += [value.id]
-        _documents += [value.document]
-        _metadatas += [value.metadata]
+        _documents.push(value.document)
+        _metadatas.push(value.metadata)
     })
     try{
         let collection = await client.getOrCreateCollection({name: collectionName, embeddingFunction})
+        //@ts-ignore
         await collection.add({
             // ids: [id],
             documents: _documents,
@@ -107,8 +109,7 @@ const addMany = async({collectionName, documents})=>{
     }
 }
 
-const query = async ({ collectionName, text, limit }) => {
-    /**@type {Promise<import("chromadb").> | null} */
+const query = async ({ collectionName, text, limit }:{collectionName: string, text: string, limit: number}): Promise<any | null> => {
     if (!collectionName) {
         console.log("No collection name")
         return null

@@ -10,7 +10,7 @@ console.log("man...")
  * 
  * @param {WebSocket} ws 
  */
-const handleConnection = (ws) => {
+const handleConnection = (ws: WebSocket) => {
     
     ws.on('open', () => {
         console.log("dude...")
@@ -27,16 +27,17 @@ const handleConnection = (ws) => {
         }
         // console.log("-------------------------")
         // console.log(json)
-        if (!ws.host) {
+        if (!(ws as any).host) {
             // console.log("token::"+json.token)
-            let {host} = validateChatToken({token:json.token})
+            let {host} = validateChatToken({token:json.token}) as any
             // let host = 'Sar-EL'
             if (host) {
-                ws.host = host
-                ws.threadId = await ai.createThreadId()
+                (ws as any).host = host;
+                (ws as any).threadId = await ai.createThreadId();
                 ws.send(JSON.stringify({ chunk: "", reason: "connected", finished: true }))
             } else {
                 //Drop connection
+                console.log("dropped!")
                 ws.send(JSON.stringify({ reason: "unauth"}))
                 ws.close()
             }
@@ -44,8 +45,8 @@ const handleConnection = (ws) => {
             if (json["data"]) {
                 ai.sendMessage({
                     message: json["data"],
-                    threadId: ws.threadId,
-                    host: ws.host,
+                    threadId: (ws as any).threadId,
+                    host: (ws as any).host,
                     handler: ({ chunk, finished, context, reason }) => {
                         // console.log("Sending: "+chunk)
                         ws.send(JSON.stringify({ chunk, finished: finished === true, context, reason }))

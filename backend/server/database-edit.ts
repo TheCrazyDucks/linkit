@@ -180,6 +180,7 @@ function addService(id: string, user_id: string, type: ServiceType) {
         access_id: timeId(),
         access_key: randomKey(),
         start_date: Date.now(),
+        tier: undefined,
         status: "Active" //TODO: maybe change this to pending?
     }
     const input: PutCommandInput = {
@@ -422,7 +423,8 @@ let service: Service = {
     access_id: "lol!",
     start_date: 0,
     status: "Active",
-    type: "Linkit"
+    type: "Linkit",
+    tier: undefined
 }
 
 // addService(service)

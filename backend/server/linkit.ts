@@ -1,6 +1,6 @@
 import {createServer} from "node:http"
 import { WebSocketServer } from "ws"
-import express from "express"
+import express from "express" //@allowSyntheticDefaultImports
 import handleConnection from "./websocket.js"
 import chroma from "./chroma.js"
 import { handleTokenExchange, loadKeys, handleAccessForToken } from "./auth.js"
@@ -10,13 +10,15 @@ import rateLimit from "express-rate-limit"
 import slowDown from "express-slow-down"
 // import cors from "cors"
 
+const IS_PRODUCTION = process.env.PRODUCTION ?? false
+
 chroma.connect()
 
 const app = express()
 
 //TODO: check if rate limit settings are good - if not remove it
 app.use(rateLimit({
-    windowMs: 1000 * 60, //60 seconds
+    windowMs: 1000 * 30, //60 seconds
     limit: 30 //60 requests
 }))
 app.use(slowDown({
@@ -24,6 +26,11 @@ app.use(slowDown({
     delayAfter: 15, //15 requests
     delayMs: ()=> 1000 //1 second delay between each after 15
 }))
+
+app.get("/health", (_, res)=>{
+    res.status(200).end()
+})
+
 app.use(express.json())
 app.use(express.urlencoded())
 app.use(cors({origin: "*",
@@ -63,6 +70,9 @@ app.post("/linkit/v0/token", (req, res) => {
     handleTokenExchange({res, key})
 })
 
+/**
+ * onSucess: json { token: String }
+ */
 app.post("/linkit/token", (req, res)=>{
     console.log("v2")
     let id = req.body["id"]
@@ -92,11 +102,6 @@ app.post("/linkit/token", (req, res)=>{
 //         stream.pipe(res)
 //     })
 // }
-
-
-app.get("/health", (_, res)=>{
-    res.status(200).end()
-})
 
 app.use((_, res)=>{
     res.status(404).end()

@@ -2,6 +2,7 @@ import OpenAI from "openai"
 import { config } from "dotenv"
 import chroma from "./chroma.js"
 import { getServicePrefrences } from "./dynamo.js"
+import { ServicePrefrences } from "./types/database.js"
 config()
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -39,7 +40,7 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 //     ]
 // }]
 
-const tools = {
+const tools: Record<string, OpenAI.Beta.AssistantTool> = {
     "getRelatedArticles": {
         type: "function",
         function: {
@@ -58,60 +59,46 @@ const tools = {
     }
 }
 
-/**
- * @type {{[id: string]: {
- *  instruction: string 
- * }}}
- */
-let cachedAssitantPrefrences = {
-}
+let cachedAssitantPrefrences:Record<string, ServicePrefrences> = {};
 
-let cachedAssitants = {
-}
+//TODO: Invalidate cache when updating database info
+let cachedAssitants = {};
 
 /**
- * 
- * @param {string} host 
- * @returns {Promise<import("./types/database").ServicePrefrences>}
+ * Loads assistant prefrences 
  */
-async function loadAssitantPrefrences(host) {
-    
+async function loadAssitantPrefrences(host: string): Promise<ServicePrefrences> {
     //TODO: validate host >_<
     if (!cachedAssitantPrefrences[host]) {
         let data = await getServicePrefrences(host)
 
         //Doesnt have prefrences / failed
-        // console.log(JSON.stringify(data))
         if (!data || !data["prefrences"]){
             //TODO: handle
             return null
         }
+
         //TODO: check whether reached max cache capacity
         cachedAssitantPrefrences[host] = {
             ...data["prefrences"]
         };
         cachedAssitantPrefrences[host]["name"] = host;
     }
-    return cachedAssitantPrefrences[host]
+    return cachedAssitantPrefrences[host] as unknown as ServicePrefrences
 }
 
-/**
- * @param {import("./types/database").ServicePrefrences} prefrences 
- * @returns {Promise<any>}
- */
-function buildAssistant(prefrences) {
+function buildAssistant(prefrences: ServicePrefrences): Promise<any> {
     if (!prefrences) {
         //TODO: handle such situation
         return; 
     }
-    // console.log(JSON.stringify(prefrences))
-    /** @type {Array<OpenAI.Beta.AssistantCreateParams>} */
-    let info = {
+    let info: OpenAI.Beta.AssistantCreateParams = {
         instructions: prefrences.instruction ?? "",
         name: prefrences.name,
         model: "gpt-4o-mini",
         temperature: 1,
         top_p: 1,
+        tools: undefined
     }
 
     if (Array.isArray(prefrences.tools)) {
@@ -125,7 +112,7 @@ function buildAssistant(prefrences) {
     return openai.beta.assistants.create(info)
 }
 
-async function loadAssistant(host) {
+async function loadAssistant(host: string) {
     console.log("loading assitant for: "+host)
     if (!cachedAssitants[host]) {
         
@@ -176,10 +163,12 @@ const sendMessage = async ({ message, threadId, handler, host }) => {
     reteriveResponse({ threadId, host, assistant_id: assistant.id, handler })
 }
 
+//TODO: Implement endpoint
 const teach = async ({ data, dir }) => {
 
 }
 
+//For performance testing
 let time = Date.now()
 
 const reteriveResponse = async ({ threadId, host, assistant_id, handler }) => {
@@ -190,13 +179,14 @@ const reteriveResponse = async ({ threadId, host, assistant_id, handler }) => {
             max_completion_tokens: 400,
         }))
     } catch {
-        handler({ chunk: buffer, finished: true, reason: "unkown" })
+        //TODO: check why was it buffer ?
+        handler({ chunk: "", finished: true, reason: "unkown" })
     }
 
     handleStream({ stream, threadId, host, handler })
 }
 
-async function handleStream({ stream, context, host, threadId, handler }) {
+async function handleStream({ stream, context, host, threadId, handler }: {stream: any, context?: any | any[], host?: string, threadId: any, handler: any}) {
     let buffer = ''
     let shouldAddSpace = false
     // console.log("host::" + host)
@@ -322,7 +312,7 @@ async function handleStream({ stream, context, host, threadId, handler }) {
     }
 }
 
-async function submitFunctionCallings({ results, context, host, threadId, handler, runId }) {
+async function submitFunctionCallings({ results, context, host, threadId, handler, runId }:{results: any[], context: any[], host?: string, threadId: any, handler: any, runId: any}) {
     // console.log("Submitting: " + results)
     // console.log("runId:" + runId)
     // console.log("threadId:" + threadId)

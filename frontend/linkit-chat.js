@@ -16,8 +16,8 @@ const linkit = () => {
     let isFocused = false
     let token = null
     let settings;
-    const uri = "service.thecrazyducks.com"
-    // const uri = "localhost:8090"
+    // const uri = "service.thecrazyducks.com"
+    const uri = "localhost:8090"
     /**
      * @type {import("./linkit.d.ts").LinkitConfig}
      */
@@ -189,7 +189,7 @@ const linkit = () => {
         initInput()
         displayConnection(false)
         clearContent()
-        document.querySelector(".linkit-content").innerHTML += `<div class="linkit-update-ind">Info last updated on 8th Oct 2024</div>`
+        // document.querySelector(".linkit-content").innerHTML += `<div class="linkit-update-ind">Info last updated on 8th Oct 2024</div>`
         addSuggestionsView(document.querySelector(".linkit-content"), settings.suggestions)
         initScrollDownButton()
         // displayMailBox()
@@ -270,7 +270,7 @@ const linkit = () => {
         console.log("connecting")
         // websocket = new WebSocket("wss://" + uri)
         //TODO: revert to secure
-        websocket = new WebSocket("wss://" + uri)
+        websocket = new WebSocket("ws://" + uri)
 
         setInterval(() => {
             try {

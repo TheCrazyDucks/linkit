@@ -7,42 +7,7 @@ config()
 const TOKEN_SECRET = process.env.TOKEN_SECRET
 const TOKEN_PAYLOAD_OFFSET = 1724082267615
 
-// console.log("token: "+TOKEN_SECRET)
-
-/**
- * 
- * @param {*} token 
- * @returns {header: any | {}} When valid - a non empty object
- */
-// export const validateChatToken = (token)=>{
-//     let { header, payload} = decodeToken(token)
-    
-//     if(!header || !payload){
-//         console.log("No header / payload")
-//         return {}
-//     }
-//     try{
-//         let decoded = JSON.parse(header)
-//         if(Date.now() > new Date(decoded.expires).getTime()){
-//             console.log("Expired!")
-//             throw new Error("LOL!")
-//         }
-//     }catch{
-//         console.log("Cant decode!")
-//         return {}
-//     }
-//     let recreatedToken = createToken({header, payload})
-//     if(recreatedToken !== token || !recreatedToken || !token){
-//         console.log("Match failed")
-//         return {}
-//     }
-//     console.log("Payload: "+payload+", header: "+header)
-//     try{
-//         return JSON.parse(header)
-//     }catch{}
-// }
-
-const keys = {};
+const keys: Record<string, any> = {};
 
 /**
  * @deprecated
@@ -50,31 +15,27 @@ const keys = {};
 export const loadKeys = ()=>{
     keys[hashToken(process.env.SAR_EL_KEY)] = "sar_el_tours"
     keys[hashToken(process.env.NEVEL_KEY)] = "nevel_david"
-    // console.log(JSON.stringify(keys))
 }
 
-const getHostByKey = (key)=>{
+const getHostByKey = (key: string): Record<string, any>=>{
     return keys[key]
 }
 
-const isString = (obj) => typeof obj === 'string';
+const isString = (obj: any) => typeof obj === 'string';
 
 /**
  * @deprecated Was previously used to valid against locally stored secrets
- * @param {*} key 
  * @see handleAccessForToken
- * @returns 
  */
-const validateRefreshKey = (key)=>{
+const validateRefreshKey = (key: string | null | undefined): (undefined | string)=>{
     if(!isString(key)){
         return;
     }
 
     try{
         let hashed = hashToken(key)
-        // console.log("New hashed: "+hashed)
-        let host
         //TODO: change hashed to 
+        let host: any;
         if(hashed && (host = getHostByKey(hashed))){
             return host
         }
@@ -85,22 +46,15 @@ const validateRefreshKey = (key)=>{
 }
 
 
-/**
- * @param {string | undefined} obj 
- * @returns {boolean}
- */
-const isTimeIdValid = (obj)=>{
+const isTimeIdValid = (obj: any): boolean=>{
     if(!isString(obj)){
         return false
     }
     return obj.match(/^[a-zA-Z0-9]+$/) !== null
 }
 
-/**
- * @param {string | undefined} obj 
- * @returns {boolean}
- */
-const isSecretValid = (obj)=>{
+
+const isSecretValid = (obj: string): boolean=>{
     if(!isString(obj)){
         return false
     }
@@ -109,10 +63,9 @@ const isSecretValid = (obj)=>{
 
 /**
  * Generates a JWT like token (lasts 30 mins) - a token that'd be used for authorization from frontend
- * @param {{res: Response, id: string, secret: string}} param0 
- * @returns 
+ * @returns {never}
  */
-export const handleAccessForToken = async ({ res, id, secret }) => {
+export const handleAccessForToken = async ({ res, id, secret }: {res: any, id: string, secret: string}) => {
     if(!isTimeIdValid(id) || !isSecretValid(secret)){
         sendBadRequest(res)
         return;
@@ -134,10 +87,8 @@ export const handleAccessForToken = async ({ res, id, secret }) => {
 }
 
 /**
- * @deprecated this method was replaces by hanndleAccessForToken which works with database
- * @param {*} param0 
+ * @deprecated this method was replaces by handleAccessForToken which works with database
  * @see handleAccessForToken
- * @returns 
  */
 export const handleTokenExchange = ({res, key})=>{
     let host = validateRefreshKey(key)
@@ -156,25 +107,26 @@ export const handleTokenExchange = ({res, key})=>{
     res.status(500).end()
 }
 
-const generateToken = ({ header }) => {
-    // if (!isValidId(userId)) return undefined;
+export const generateToken = ({ header }) => {
     let token = createToken({ header, payload: `${tokenExpireFromNow() - TOKEN_PAYLOAD_OFFSET}`, noPadding: true })
     return token
 }
 
-const tokenExpireFromNow = ()=>{
+/**
+ * @returns {number} 30 minutes from now
+ */
+const tokenExpireFromNow = (): number =>{
     return Date.now() + 30 * 60 * 1000 //30 minutes
 }
 
 /**
- * Validates the JWT like token 
- * @param {*} param0 
- * @returns information saved on token | empty object if it's invalid
+ * Validates the "JWT"-like token 
+ * @returns Information saved on token | empty object if it's invalid
  * @see validateToken which it depends on
  */
-export const validateChatToken = ({token})=>{
+export const validateChatToken = ({token}:{token: string}):(Record<string, any> | {}) =>{
     try {
-        let result = validateToken({token, noPadding: true})
+        let result = validateToken(token, true)
         if(result){
             return JSON.parse(result)
         }
@@ -187,10 +139,9 @@ export const validateChatToken = ({token})=>{
 
 /**
  * This function breaks the token & rebuilts it to ensure it's valid
- * @param {{token: string}} param0 
- * @returns {string|undefined} When the token is valid user id is returned
+ * @returns When the token is valid user id is returned
  */
-const validateToken = ({ token, noPadding }) => {
+export const validateToken = ( token: string, noPadding: boolean): string | undefined => {
     if (!isString(token)) return undefined;
 
     let [header, payload] = token.split(".")
@@ -201,24 +152,33 @@ const validateToken = ({ token, noPadding }) => {
     }
     try {
         header = decodeBase64(header)
-        payload = Number(decodeBase64)
-        if(payload + TOKEN_PAYLOAD_OFFSET >= Date.now()){
-            // console.log("\x1b[32;mExpired\x1b[0;m")
+        let time = Number(decodeBase64(payload)) || 0
+
+        // console.log(`Expires in ${(time + TOKEN_PAYLOAD_OFFSET - Date.now()) / 1000}s`)
+
+        //If now is greater than token's time - it's expired
+        if(time + TOKEN_PAYLOAD_OFFSET <= Date.now()){
+            //Expired
             return undefined
         }
     }catch(e){
         console.error(e)
+        //Couldn't decode
         return undefined
     }
     return header
 }
 
+type createTokenParams = {
+    header: String, payload: String, encoded?: boolean, noPadding: boolean
+}
+
 /**
  * Create a JWT like token that lasts 30 mins 
- * @param {{header: string, payload: string, encoded: boolean, noPadding: boolean}} param0 encoded - whether the header & payload are already base64 
+ * @param encoded - whether the header & payload are already base64 
  * @returns 
  */
-export const createToken = ({ header, payload, encoded, noPadding }) => {
+export const createToken = ({ header, payload, encoded, noPadding}:createTokenParams): undefined | string => {
     if (!isString(header) || !isString(payload)) return undefined;
 
     let h = header
@@ -238,11 +198,11 @@ export const createToken = ({ header, payload, encoded, noPadding }) => {
     return `${h}.${p}.${hmac((h + "." + p).toString(), TOKEN_SECRET)}`
 }
 
-export const hashToken = (token) => {
+export const hashToken = (token: string): string => {
     return createHash("sha256").update(token).digest('base64').replace(/\//g, "_").replace(/\+/g, "-")
 }
 
-export const decodeToken = (token)=>{
+export const decodeToken = (token: string): ({header: string, payload: string} | {})=> {
     if(!isString(token)) return {};
     let [header, payload] = token.split(".")
 
@@ -256,17 +216,17 @@ export const decodeToken = (token)=>{
     }
 }
 
-const hmac = (data, secret) => {
+const hmac = (data: string, secret: string) => {
     return createHmac("sha256", secret).update(data).digest("base64url")
 }
 
-const encodeBase64 = (str, noPadding) => {
+const encodeBase64 = (str: string, noPadding: boolean): string | undefined => {
     if (!isString(str)) return undefined;
     let encoded = btoa(str)
     // return encodeURIComponent(encoded)
     return noPadding ? encoded.replace(/=/g, "").replace(/\//g, '_').replace(/\+/, '-') : encoded
 }
 
-const decodeBase64 = (data) => {
+const decodeBase64 = (data: string) => {
     return atob(data.replace(/-/g, "+").replace(/_/g, "/"))
 }

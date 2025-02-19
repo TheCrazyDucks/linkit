@@ -1,4 +1,3 @@
-
 async function test() {
     console.log(process.argv[2])
     try {

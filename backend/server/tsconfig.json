@@ -1,11 +1,12 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
     "module": "ESNext",
     "target": "esnext",
     "moduleResolution": "node",
     "typeRoots": [
-       "types", "./node_modules/@types"
+       "types", "./node_modules/@types", "bun-types"
     ]
   }
 }

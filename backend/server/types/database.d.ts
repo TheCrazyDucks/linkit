@@ -48,6 +48,7 @@ type month = number//'jan' | 'feb' | 'mar' | 'apr' | 'may' | 'jun' | 'jul' | 'au
 type MonthId = `${year}-${month}`;
 
 export type ServicePrefrences = {
+    name: string,
     instruction: string,
     tools: Array<string>,
     qa?: Record<string, string>

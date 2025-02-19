@@ -13,11 +13,9 @@ services:
           path: .
           target: /usr/app/
     environment:
-      pharse: ${PHARSE}
       TOKEN_SECRET: ${TOKEN_SECRET}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       CHROMA_HOST: ${CHROMA_HOST} 
-      SAR_EL_KEY: ${SAR_EL_KEY}
     ports:
       - "8090:8080"
     volumes:

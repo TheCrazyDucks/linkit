@@ -1,11 +1,12 @@
 import { QueryCommand, DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb"
+import { DynamoDBDocumentClient, PutCommand, UpdateCommand, UpdateCommandInput } from "@aws-sdk/lib-dynamodb"
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from "dotenv"
 import { createHash } from "node:crypto";
 import { webcrypto } from "node:crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb"
+import { ServicePrefrences } from "./types/database";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 config({ path: __dirname + "/.env" })
@@ -43,7 +44,7 @@ function addService({ user_id, type }) {
     docClient.send(new PutCommand(input))
 }
 
-function randomKey(encoding) {
+function randomKey(encoding?): string {
     return createHash("sha256").update(webcrypto.randomUUID().replace(/\-/g, "") + Date.now()).digest(encoding ?? "base64url")
 }
 
@@ -85,8 +86,7 @@ function updateService(service) {
 const update = async (tableName, key, item) => {
     const itemKeys = Object.keys(item);
 
-    /** @type {UpdateCommandInput} */
-    const input = {
+    const input: UpdateCommandInput = {
         TableName: tableName,
         Key: key,
         ReturnValues: 'ALL_NEW',
@@ -159,13 +159,7 @@ export async function updateFaqs(){
 
 }
 
-/**
- * 
- * @param {*} id 
- * @param {*} type 
- * @returns {Promise<import("./types/database").ServicePrefrences | undefined | null>}
- */
-export async function getServicePrefrences(id, type) {
+export async function getServicePrefrences(id: string, type?:any): Promise<ServicePrefrences | undefined | null | {}> {
     const input = {
         TableName: "Services",
         KeyConditionExpression: "#id = :id",
@@ -186,7 +180,7 @@ export async function getServicePrefrences(id, type) {
         if (result.Items.length > 0) {
             try{
                 // console.log(JSON.stringify(result.Items[0]))
-                return unmarshall(result.Items[0])
+                return unmarshall(result.Items[0]) as unknown as ServicePrefrences
             }catch{
                 return null
             }
